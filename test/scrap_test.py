@@ -13,6 +13,6 @@ from __future__ import print_function
 from scrap import Scrap
 
 if __name__ == "__main__":
-    user = Scrap("https://github.com/rafikurnia")
+    user = Scrap("http://www.facebook.com/login.php")
     output = user.scrap()
     print(output)

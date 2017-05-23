@@ -7,10 +7,9 @@
 """
 scrap - Created by Rafi Kurnia Putra <rafi.kurnia.putra@gmail.com> on 23/05/2017
 """
-
-import urllib
-
+import requests
 from bs4 import BeautifulSoup
+from fake_useragent import UserAgent
 
 
 class Scrap(object):
@@ -27,6 +26,12 @@ class Scrap(object):
         :return: list of contents
         """
 
-        r = urllib.urlopen(self.facebook_user_url).read()
-        soup = BeautifulSoup(r)
-        return soup.prettify()[0:1000]
+        ua = UserAgent()
+        header = {'User-Agent': ua.chrome}
+        r = requests.get(self.facebook_user_url, headers=header)
+
+        if r.status_code == 200:
+            soup = BeautifulSoup(r.content, "html.parser")
+            return soup.prettify()[0:1000]
+        else:
+            return []
