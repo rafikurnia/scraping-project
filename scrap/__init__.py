@@ -7,9 +7,10 @@
 """
 scrap - Created by Rafi Kurnia Putra <rafi.kurnia.putra@gmail.com> on 23/05/2017
 """
-import requests
+import mechanize
 from bs4 import BeautifulSoup
-from fake_useragent import UserAgent
+
+import conf
 
 
 class Scrap(object):
@@ -17,21 +18,43 @@ class Scrap(object):
     Scrap facebook user's posts and comments
     """
 
-    def __init__(self, facebook_user_url):
-        self.facebook_user_url = facebook_user_url
+    def __init__(self):
+        self.browser = mechanize.Browser()
+        self.browser.set_handle_robots(False)
 
-    def scrap(self):
+        f = open("/mnt/Data/Ubuntu/scrapping-project/scrap/cookie_data")
+        cookie = f.read()
+        f.close()
+
+
+        # while len(cookie) != 0:
+        # self.browser.set_cookie(cookie)
+            # cookie = cookie[cookie.find(';') + 1:]
+
+        cookies = mechanize.CookieJar()
+        self.browser.set_cookiejar(cookies)
+
+        self.browser.addheaders = [("User-agent",
+                                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                                    "Chrome/58.0.3029.96 Safari/537.36")]
+        self.browser.set_handle_refresh(False)
+        self.browser.open("http://www.facebook.com/login.php")
+        self.browser.select_form(nr=0)
+        self.browser.form['email'] = conf.EMAIL
+        self.browser.form['pass'] = conf.PASSWORDS
+        self.browser.submit()
+
+    def scrap(self, facebook_user_url):
         """
         Start scrapping on the user page
         :return: list of contents
         """
 
-        ua = UserAgent()
-        header = {'User-Agent': ua.chrome}
-        r = requests.get(self.facebook_user_url, headers=header)
+        final_url = "https://m.facebook.com/" + facebook_user_url
 
-        if r.status_code == 200:
-            soup = BeautifulSoup(r.content, "html.parser")
-            return soup.prettify()[0:1000]
-        else:
-            return []
+        self.browser.open(final_url)
+        response = self.browser.response()
+        contents = response.read()
+
+        final_contents = BeautifulSoup(contents, "html.parser")
+        return final_contents, final_contents.prettify(), self.browser
