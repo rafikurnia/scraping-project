@@ -90,8 +90,7 @@ class Scrap(object):
 
         # fil = filter(lambda x: '"id":"tlFeed"' in x, final_contents.prettify().splitlines())
         # fil = fil[0]
-        # cl = fil.replace("\\\\\\/", "/").replace("\\/", "/").replace('\\"', '"').replace("\\u003C", '<').replace(
-        #     "&amp;", "&").replace("&quot;", '"').replace("&#123;", "{").replace("&#125;", "}").replace("\\u0025", "%")
+        # cl = fil.replace("\\\\\\/", "/").replace("\\/", "/").replace('\\"', '"').replace("\\u003C", '<').replace("&amp;", "&").replace("&quot;", '"').replace("&#123;", "{").replace("&#125;", "}").replace("\\u0025", "%")
         # connt = BeautifulSoup(cl, "html.parser")
         # hrf = connt.find_all('a', href=True)
         # ahrf = map(lambda x: str(x).replace("&amp;", "&"), hrf)

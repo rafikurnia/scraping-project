@@ -13,4 +13,4 @@ from __future__ import print_function
 from scrap import Scrap
 
 scrapper = Scrap()
-output, pretty, browser = scrapper.scrap("rafikurniasanusi")
+output, pretty, browser = scrapper.scrap("profile.php?id=100000132783800")
