@@ -5,7 +5,7 @@ __pycache__/
 # C extensions
 *.so
 
-cookie_data
+cookie_data*
 
 # Distribution / packaging
 .Python
