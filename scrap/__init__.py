@@ -88,7 +88,6 @@ class Scrap(object):
         final_contents = BeautifulSoup(contents, "html.parser")
         return final_contents, final_contents.prettify(), self.browser
 
-
         # fil = filter(lambda x: '"id":"tlFeed"' in x, final_contents.prettify().splitlines())
         # fil = fil[0]
         # cl = fil.replace("\\\\\\/", "/").replace("\\/", "/").replace('\\"', '"').replace("\\u003C", '<').replace(
