@@ -7,8 +7,12 @@
 """
 scrap - Created by Rafi Kurnia Putra <rafi.kurnia.putra@gmail.com> on 23/05/2017
 """
-import mechanize
+
+import re
+import time
+
 from bs4 import BeautifulSoup
+from selenium import webdriver
 
 import conf
 
@@ -19,59 +23,21 @@ class Scrap(object):
     """
 
     def __init__(self):
-        self.browser = mechanize.Browser()
-        self.browser.set_handle_robots(False)
+        self.driver = webdriver.Chrome("/mnt/Data/Ubuntu/Downloads/chromedriver")
+        self.driver.get("https://www.facebook.com")
+        time.sleep(3)
 
-        # f = open("/mnt/Data/Ubuntu/scrapping-project/scrap/cookie_data")
-        # cookie = f.read()
-        # f.close()
+        username = self.driver.find_element_by_id("email")
+        username.send_keys(conf.EMAIL)
+        time.sleep(2)
 
-        # while len(cookie) != 0:
-        # self.browser.set_cookie(cookie)
-        # cookie = cookie[cookie.find(';') + 1:]
+        password = self.driver.find_element_by_id("pass")
+        password.send_keys(conf.PASSWORDS)
+        time.sleep(2)
 
-
-        # import pickle
-        #
-        # with open('../cookie_data_3.pkl', 'rb') as input:
-        #     cookie_data = pickle.load(input)
-
-        # import cookielib
-        #
-        # cookie_data_2 = cookielib.Cookie(version=0, name='c_user', value="1393754456", expires=1503332297, port=None,
-        #                                  port_specified=False, domain='.facebook.com', domain_specified=True,
-        #                                  domain_initial_dot=True, path='/', path_specified=True, secure=True,
-        #                                  discard=False, comment=None,
-        #                                  comment_url=None, rest={}, rfc2109=False)
-
-        cookies = mechanize.CookieJar()
-        # cookies.set_cookie(cookies)
-        #
-
-        self.browser.set_cookiejar(cookies)
-
-        # print self.browser._ua_handlers['_cookies'].cookiejar
-        #
-        # exit()
-
-        # self.browser.set_simple_cookie()
-
-
-        self.browser.addheaders = [("User-agent",
-                                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                                    "Chrome/58.0.3029.96 Safari/537.36")]
-        self.browser.set_handle_refresh(False)
-        self.browser.open("http://www.facebook.com/login.php")
-
-        # print self.browser._ua_handlers['_cookies'].cookiejar[0]
-        #
-        # exit()
-
-
-        self.browser.select_form(nr=0)
-        self.browser.form['email'] = conf.EMAIL
-        self.browser.form['pass'] = conf.PASSWORDS
-        self.browser.submit()
+        login = self.driver.find_element_by_id("loginbutton")
+        login.click()
+        time.sleep(5)
 
     def scrap(self, facebook_user_url):
         """
@@ -80,21 +46,51 @@ class Scrap(object):
         """
 
         final_url = "https://m.facebook.com/" + facebook_user_url
+        self.driver.get(final_url)
+        time.sleep(3)
 
-        self.browser.open(final_url)
-        response = self.browser.response()
-        contents = response.read()
+        last_height = self.driver.execute_script("return document.body.scrollHeight")
+        while True:
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(5)
+            new_height = self.driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                break
+            last_height = new_height
 
+        time.sleep(5)
+        contents = self.driver.page_source
         final_contents = BeautifulSoup(contents, "html.parser")
-        return final_contents, final_contents.prettify(), self.browser
 
-        # fil = filter(lambda x: '"id":"tlFeed"' in x, final_contents.prettify().splitlines())
-        # fil = fil[0]
-        # cl = fil.replace("\\\\\\/", "/").replace("\\/", "/").replace('\\"', '"').replace("\\u003C", '<').replace("&amp;", "&").replace("&quot;", '"').replace("&#123;", "{").replace("&#125;", "}").replace("\\u0025", "%")
-        # connt = BeautifulSoup(cl, "html.parser")
-        # hrf = connt.find_all('a', href=True)
-        # ahrf = map(lambda x: str(x).replace("&amp;", "&"), hrf)
-        # import re
-        # iseng_boy = filter(lambda x: len(re.findall(r'<a href=\"\/story(.*?)>', x)) > 0, ahrf)
-        # iseng_man = filter(lambda x: len(re.findall(r'<abbr>(.*?)</abbr>', x)) > 0, iseng_boy)
-        # url_only = map(lambda x: 'https://m.facebook.com' + re.findall(r'\"(.*?)\"', x)[0].replace('"', ''), iseng_man)
+        # posts_comments = filter(lambda x: "\"id\":\"tlFeed\"" in x, final_contents.prettify().splitlines())[0]
+        # cleaned = posts_comments \
+        #     .replace("\\\\\\/", "/") \
+        #     .replace("\\/", "/") \
+        #     .replace("\\\"", "\"") \
+        #     .replace("\\u003C", "<") \
+        #     .replace("&amp;", "&") \
+        #     .replace("&quot;", "\"") \
+        #     .replace("&#123;", "{") \
+        #     .replace("&#125;", "}") \
+        #     .replace("\\u0025", "%") \
+        #     .replace("&gt;", ">")
+
+        # soup = BeautifulSoup(cleaned, "html.parser")
+        all_href = final_contents.find_all('a', href=True)
+        html = map(lambda x: str(x).replace("&amp;", "&"), all_href)
+        user_data = filter(lambda x: len(re.findall(r"<a href=\"/(?:story|photo)(.*?)>", x)) > 0, html)
+        permalink = filter(lambda x: len(re.findall(r"<abbr>(.*?)</abbr>", x)) > 0, user_data)
+        url_only = map(lambda x: "https://m.facebook.com" + re.findall(r"\"(.*?)\"", x)[0].replace("\"", ""), permalink)
+
+        new0 = list(enumerate(url_only))
+        new1 = map(lambda x: (x[0], x[1].split("&_ft_=")), new0)
+        new2 = [(x[0], x[1][1]) for x in new1]
+
+        import pandas
+        df = pandas.DataFrame(data=new2, columns=['index', 'keys']).groupby('keys').agg({'index': 'min'})
+
+        selected_url = sorted([item for sublist in df.values.tolist() for item in sublist])
+
+        final_url = [item[1] for item in new0 if item[0] in selected_url]
+
+        return final_contents, final_url, self.driver
