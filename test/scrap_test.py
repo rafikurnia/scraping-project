@@ -5,12 +5,21 @@
 # Licensed under the MIT - https://opensource.org/licenses/MIT
 
 """
-scrap_test - Created by Rafi Kurnia Putra <rafi.kurnia.putra@gmail.com> on 23/05/2017
+scrap_test.py - Created by Rafi Kurnia Putra <rafi.kurnia.putra@gmail.com> on 23/05/2017
 """
 
 from __future__ import print_function
 
-from scrap import Scrap
+from scrap import Scraper
 
-scrapper = Scrap()
-final_contents, final_url, driver = scrapper.scrap("profile.php?id=100000132783800")
+
+def main():
+    """
+    Scraper Functional Test
+    """
+
+    json_output = Scraper.scrap("bentar.dwika")
+    print(json_output)
+
+
+main()

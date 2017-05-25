@@ -5,106 +5,132 @@
 # Licensed under the MIT - https://opensource.org/licenses/MIT
 
 """
-scrap - Created by Rafi Kurnia Putra <rafi.kurnia.putra@gmail.com> on 23/05/2017
+Package scrap - Created by Rafi Kurnia Putra <rafi.kurnia.putra@gmail.com> on 23/05/2017
 """
 
+import json
 import re
 import time
 
 from bs4 import BeautifulSoup
-from selenium import webdriver
+from pandas import DataFrame
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver import Chrome
 
-import conf
+import conf  # contains email and password for a facebook account
 
 
-class Scrap(object):
+class Scraper(object):
     """
-    Scrap facebook user's posts and comments
+    Scrap facebook user's posts and life events with comments
+    
+    usage : Scraper.scrap(facebook_user_url)
+    example : Scraper.scrap("rafikurniasanusi")
     """
 
     def __init__(self):
-        self.driver = webdriver.Chrome("/mnt/Data/Ubuntu/Downloads/chromedriver")
+        """
+        Initiate webdriver and login into your facebook account
+        """
+
+        self.driver = Chrome(conf.WEBDRIVER)
         self.driver.get("https://www.facebook.com")
-        time.sleep(3)
+        time.sleep(3)  # wait for the page is properly opened
 
-        username = self.driver.find_element_by_id("email")
-        username.send_keys(conf.EMAIL)
-        time.sleep(2)
+        self.driver.find_element_by_id("email").send_keys(conf.EMAIL)
+        self.driver.find_element_by_id("pass").send_keys(conf.PASSWORDS)
+        self.driver.find_element_by_id("loginbutton").click()
+        time.sleep(5)  # wait for the page is properly opened
 
-        password = self.driver.find_element_by_id("pass")
-        password.send_keys(conf.PASSWORDS)
-        time.sleep(2)
-
-        login = self.driver.find_element_by_id("loginbutton")
-        login.click()
-        time.sleep(5)
-
-    def scrap(self, facebook_user_url):
+    @classmethod
+    def scrap(cls, facebook_user_url):
         """
-        Start scrapping on the user page
-        :return: list of contents
+        Scrap facebook user's posts and life events with comments
+        
+        :param facebook_user_url: user's profile url (example: "rafikurniasanusi") 
+        :return: user's posts since his/her facebook profile was created in json format 
         """
 
-        final_url = "https://m.facebook.com/" + facebook_user_url
-        self.driver.get(final_url)
-        time.sleep(3)
+        this = cls()  # create an instance of class
 
-        last_height = self.driver.execute_script("return document.body.scrollHeight")
+        final_url = "https://m.facebook.com/" + facebook_user_url  # mobile page is simpler than desktop page
+        this.driver.get(final_url)  # create request to user's facebook profile page
+        time.sleep(5)  # wait for the page is properly opened
+
+        user_name = this.driver.title  # get user's full name
+
+        # scroll down the page until the beginning of time when user's facebook account was created
+        last_height = this.driver.execute_script("return document.body.scrollHeight")  # get current page's height
         while True:
-            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(5)
-            new_height = self.driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
+            this.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
+            time.sleep(5)  # wait for the page is properly loaded
+
+            new_height = this.driver.execute_script("return document.body.scrollHeight")  # update current page's height
+            if new_height == last_height:  # stopping condition, stop when the page's height was not changed
                 break
-            last_height = new_height
+            else:
+                last_height = new_height  # update value
 
-        time.sleep(5)
-        contents = self.driver.page_source
-        final_contents = BeautifulSoup(contents, "html.parser")
+        contents = this.driver.page_source  # get page's html data
 
-        # posts_comments = filter(lambda x: "\"id\":\"tlFeed\"" in x, final_contents.prettify().splitlines())[0]
-        # cleaned = posts_comments \
-        #     .replace("\\\\\\/", "/") \
-        #     .replace("\\/", "/") \
-        #     .replace("\\\"", "\"") \
-        #     .replace("\\u003C", "<") \
-        #     .replace("&amp;", "&") \
-        #     .replace("&quot;", "\"") \
-        #     .replace("&#123;", "{") \
-        #     .replace("&#125;", "}") \
-        #     .replace("\\u0025", "%") \
-        #     .replace("&gt;", ">")
+        final_contents = BeautifulSoup(contents, "html.parser")  # format the data
+        all_href = final_contents.find_all('a', href=True)  # find link to each post
+        html = map(lambda html_data: str(html_data).replace("&amp;", "&"), all_href)  # change ampersand character
+        user_data = filter(lambda s: len(re.findall(r"<a href=\"/(?:story|photo)(.*?)>", s)) > 0, html)  # story & photo
+        permalink = filter(lambda link: len(re.findall(r"<abbr>(.*?)</abbr>", link)) > 0, user_data)  # contains date
+        url_only = map(lambda u: "https://m.facebook.com" + re.findall(r"\"(.*?)\"", u)[0].replace("\"", ""), permalink)
 
-        # soup = BeautifulSoup(cleaned, "html.parser")
-        all_href = final_contents.find_all('a', href=True)
-        html = map(lambda x: str(x).replace("&amp;", "&"), all_href)
-        user_data = filter(lambda x: len(re.findall(r"<a href=\"/(?:story|photo)(.*?)>", x)) > 0, html)
-        permalink = filter(lambda x: len(re.findall(r"<abbr>(.*?)</abbr>", x)) > 0, user_data)
-        url_only = map(lambda x: "https://m.facebook.com" + re.findall(r"\"(.*?)\"", x)[0].replace("\"", ""), permalink)
+        url_with_index = list(enumerate(url_only))  # labeling each url wih index
+        temp = map(lambda x: (x[0], x[1].split("&_ft_=")), url_with_index)  # split data from user id
+        data = [(element[0], element[1][1]) for element in temp]  # select index and data only
+        df = DataFrame(data=data, columns=["index", "keys"]).groupby("keys").agg({"index": "min"})  # remove duplicate
 
-        new0 = list(enumerate(url_only))
-        new1 = map(lambda x: (x[0], x[1].split("&_ft_=")), new0)
-        new2 = [(x[0], x[1][1]) for x in new1]
+        selected_url = sorted([item for sublist in df.values.tolist() for item in sublist])  # duplicate free url
+        final_url = [item[1] for item in url_with_index if item[0] in selected_url]  # remove index
 
-        import pandas
-        df = pandas.DataFrame(data=new2, columns=['index', 'keys']).groupby('keys').agg({'index': 'min'})
+        # open each link to the post and capture posts and life events with the comments
+        posts = []  # empty container for user's posts
+        for url in final_url:
+            this.driver.get(url)  # open the post
+            time.sleep(5)  # wait for the page is properly opened
 
-        selected_url = sorted([item for sublist in df.values.tolist() for item in sublist])
+            # get comments
+            comments_element = this.driver.find_elements_by_xpath("//div[contains(@class, '_14ye')]")
+            if isinstance(comments_element, list):
+                if len(comments_element) > 0:
+                    comments = [item.text.encode("utf-8").strip() for item in comments_element]
+                else:
+                    comments = []
+            else:
+                comments = []
 
-        final_url = [item[1] for item in new0 if item[0] in selected_url]
+            # get post or life event
+            try:
+                # finding post's caption
+                caption = this.driver.find_element_by_xpath(
+                    "//div[contains(@class, '_5rgt _5nk5')]"
+                ).text
+            except NoSuchElementException:
+                try:
+                    # if there was no post caption, find for life event caption
+                    caption = this.driver.find_element_by_xpath(
+                        "//div[contains(@class, '_52je _52jb _52jj _5isp')]"
+                    ).text
+                except NoSuchElementException:
+                    # the posts did not have a caption
+                    caption = ""
+            caption = caption.encode("utf-8").strip()  # clean the text
 
-        return final_contents, final_url, self.driver
+            post = {"caption": caption, "comments": comments}  # change into dictionary
+            posts.append(post)  # add to post container
 
-    # get a title from each post
-    # title = driver.find_element_by_xpath("//div[contains(@class, '_5rgt _5nk5')]").text
+        # save json data to json file
+        json_output = {user_name: {"posts": posts}}
+        with open(user_name + ".json", "w") as outfile:
+            json.dump(json_output, outfile, indent=4)
 
-    # get the comments from each post
-    # b = driver.find_elements_by_xpath("//div[contains(@class, '_14ye')]")
-    # comments = [item.text for item in b]
+        # gracefully shutdown the webdriver
+        this.driver.close()
+        this.driver.quit()
 
-    # get a title of life events
-    # events = driver.find_element_by_xpath("//div[contains(@class, '_52je _52jb _52jj _5isp')]").text
-
-    # if event or title not found it will raise NoSuchElementException
-
-
+        return json.dumps(json_output, indent=4)
