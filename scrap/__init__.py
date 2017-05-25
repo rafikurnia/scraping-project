@@ -94,3 +94,17 @@ class Scrap(object):
         final_url = [item[1] for item in new0 if item[0] in selected_url]
 
         return final_contents, final_url, self.driver
+
+    # get a title from each post
+    # title = driver.find_element_by_xpath("//div[contains(@class, '_5rgt _5nk5')]").text
+
+    # get the comments from each post
+    # b = driver.find_elements_by_xpath("//div[contains(@class, '_14ye')]")
+    # comments = [item.text for item in b]
+
+    # get a title of life events
+    # events = driver.find_element_by_xpath("//div[contains(@class, '_52je _52jb _52jj _5isp')]").text
+
+    # if event or title not found it will raise NoSuchElementException
+
+
