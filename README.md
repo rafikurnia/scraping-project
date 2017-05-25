@@ -1,2 +1,2 @@
-# scraping-projectg
+# scraping-project
 Rafi Kurnia Putra
