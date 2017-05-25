@@ -1,2 +1,2 @@
-# scraping-project
-my first time scrapping something from the web
+# scraping-projectg
+Rafi Kurnia Putra
